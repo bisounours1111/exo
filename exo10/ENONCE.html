@@ -1,0 +1,104 @@
+
+		<head>
+			<style type="text/css" media="screen">
+				body,html{font-family:var(--markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif);font-size:var(--markdown-font-size,14px);padding:0 26px;line-height:var(--markdown-line-height,22px);word-wrap:break-word}body{padding-top:1em}h1,h2,h3,h4,h5,h6,ol,p,pre,ul{margin-top:0}h2,h3,h4,h5,h6{font-weight:400;margin-bottom:.2em}img{max-width:100%;max-height:100%}a{text-decoration:none}a:hover{text-decoration:underline}a:focus,input:focus,select:focus,textarea:focus{outline:1px solid -webkit-focus-ring-color;outline-offset:-1px}p{margin-bottom:.7em}ol,ul{margin-bottom:.7em}hr{border:0;height:2px;border-bottom:2px solid}h1{padding-bottom:.3em;line-height:1.2;border-bottom-width:1px;border-bottom-style:solid;font-weight:400}table{border-collapse:collapse}th{text-align:left;border-bottom:1px solid}td,th{padding:5px 10px}table>tbody>tr+tr>td{border-top:1px solid}blockquote{margin:0 7px 0 5px;padding:0 16px 0 10px;border-left-width:5px;border-left-style:solid}code{font-family:var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, "Ubuntu Mono", "Liberation Mono", "DejaVu Sans Mono", "Courier New", monospace);font-size:1em;line-height:1.357em}body.wordWrap pre{white-space:pre-wrap}pre.hljs code>div,pre:not(.hljs){padding:16px;border-radius:3px;overflow:auto}pre code{color:var(--vscode-editor-foreground);tab-size:4}
+			</style>
+		</head>
+		<body>
+			<h1 id="tp-docker-compose---variables-denvironnement-et-volumes">TP Docker Compose - Variables d&#39;Environnement et Volumes</h1>
+<h2 id="objectif">Objectif</h2>
+<p>Maîtriser les deux concepts fondamentaux de Docker Compose :</p>
+<ol>
+<li><strong>Variables d&#39;environnement</strong> : configurer une application sans modifier le code</li>
+<li><strong>Volumes</strong> : persister les données entre les redémarrages</li>
+</ol>
+<hr>
+<h2 id="contexte">Contexte</h2>
+<p>Vous disposez d&#39;une application Spring Boot de gestion de notes déjà développée.</p>
+<p>Votre mission : <strong>conteneuriser cette application</strong> avec Docker Compose en utilisant correctement les variables d&#39;environnement et les volumes.</p>
+<hr>
+<h2 id="architecture">Architecture</h2>
+<pre><code>┌─────────────────────────────────────────────────┐
+│               Docker Compose                     │
+│                                                  │
+│  ┌─────────────┐          ┌─────────────┐       │
+│  │ Spring Boot │          │ PostgreSQL  │       │
+│  │   (app)     │─────────▶│    (db)     │       │
+│  │   :8080     │          │   :5432     │       │
+│  └──────┬──────┘          └──────┬──────┘       │
+│         │                        │              │
+│    ┌────▼────┐              ┌────▼────┐         │
+│    │ Volume  │              │ Volume  │         │
+│    │uploads/ │              │pg_data/ │         │
+│    └─────────┘              └─────────┘         │
+│                                                  │
+│  ┌─────────────────────────────────────┐        │
+│  │         Fichier .env                │        │
+│  │  APP_NAME=Notes Manager             │        │
+│  │  DB_PASSWORD=secret123              │        │
+│  │  ...                                │        │
+│  └─────────────────────────────────────┘        │
+└─────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="ce-que-vous-devez-faire">Ce que vous devez faire</h2>
+<h3 id="partie-1--fichier-env">Partie 1 : Fichier <code>.env</code></h3>
+<p>Créer un fichier <code>.env</code> contenant les variables d&#39;environnement</p>
+<hr>
+<h3 id="partie-2--fichier-docker-composeyml">Partie 2 : Fichier <code>docker-compose.yml</code></h3>
+<p>Compléter créer le  docker-compose.yml.</p>
+<hr>
+<h2 id="validation">Validation</h2>
+<h3 id="test-1--démarrage">Test 1 : Démarrage</h3>
+<pre><code class="language-bash">docker compose up -d --build
+docker compose ps
+</code></pre>
+<h3 id="test-2--variables-denvironnement">Test 2 : Variables d&#39;environnement</h3>
+<pre><code class="language-bash">curl http://localhost:8080/api/info/env
+# Doit afficher les variables injectées
+</code></pre>
+<h3 id="test-3--créer-des-données">Test 3 : Créer des données</h3>
+<pre><code class="language-bash"># Créer une note
+# Vérifier
+</code></pre>
+<h3 id="test-4--persistance-des-données">Test 4 : Persistance des données</h3>
+<pre><code class="language-bash"># Arrêter sans supprimer les volumes
+
+# Redémarrer
+
+# Attendre 20 secondes puis vérifier
+
+# La note &quot;Test persistance&quot; doit toujours exister !
+</code></pre>
+<h3 id="test-5--perte-des-données">Test 5 : Perte des données</h3>
+<pre><code class="language-bash"># Arrêter ET supprimer les volumes
+
+# Redémarrer
+
+# Attendre puis vérifier
+
+# La note a disparu (seules les données du script init restent)
+</code></pre>
+<h3 id="test-6--modifier-une-variable">Test 6 : Modifier une variable</h3>
+<pre><code class="language-bash"># Modifier APP_NAME dans .env
+# APP_NAME=Mon Application Modifiée
+
+# Recréer le conteneur app
+
+# Vérifier le changement
+
+# Le nom doit avoir changé
+</code></pre>
+<hr>
+<h2 id="rappels-théoriques">Rappels Théoriques</h2>
+<h3 id="variables-denvironnement">Variables d&#39;Environnement</h3>
+<p><strong>3 méthodes d&#39;injection :</strong></p>
+<pre><code class="language-yaml"># Méthode 1 : Depuis le fichier .env
+
+# Méthode 2 : Valeur en dur
+
+# Méthode 3 : Avec valeur par défaut
+</code></pre>
+<p>Bonne chance ! 🚀</p>
+
+		</body>
