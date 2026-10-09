@@ -1,0 +1,8 @@
+services:
+  conteneur1:
+    build: .
+    command: ping -c 3 conteneur2
+
+  conteneur2:
+    build: .
+    command: ping -c 3 conteneur1
