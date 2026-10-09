@@ -1,4 +1,4 @@
-package exo10.src.main.java.com.training.notes.service;
+package com.training.notes.service;
 
 import com.training.notes.config.AppConfig;
 import lombok.RequiredArgsConstructor;

@@ -1,4 +1,4 @@
-package exo10.src.main.java.com.training.notes;
+package com.training.notes;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

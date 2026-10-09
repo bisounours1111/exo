@@ -1,4 +1,4 @@
-package exo10.src.main.java.com.training.notes.controller;
+package com.training.notes.controller;
 
 import com.training.notes.service.FileStorageService;
 import com.training.notes.service.NoteService;

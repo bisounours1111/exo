@@ -1,4 +1,4 @@
-package exo10.src.main.java.com.training.notes.config;
+package com.training.notes.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

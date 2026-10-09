@@ -1,4 +1,4 @@
-package exo10.src.main.java.com.training.notes.model;
+package com.training.notes.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

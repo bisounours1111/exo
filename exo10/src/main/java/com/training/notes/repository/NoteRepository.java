@@ -1,4 +1,4 @@
-package exo10.src.main.java.com.training.notes.repository;
+package com.training.notes.repository;
 
 import com.training.notes.model.Note;
 import com.training.notes.model.Note.Priority;
