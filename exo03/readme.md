@@ -16,4 +16,4 @@ docker run -d --name site-exo03 -p 8080:80 -v "$(pwd)/index.html:/usr/share/ngin
 docker ps
 ```
 
-Puis ouvrir http://localhost:8081 dans le navigateur.
+Puis ouvrir http://localhost:8080 dans le navigateur.
