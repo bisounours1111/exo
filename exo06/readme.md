@@ -8,11 +8,10 @@ Il sera possible, via un dossier placé sur notre ordinateur, de coder directeme
 
 Pour cela, il vous faudra utiliser un type de volume (via l'option de lancement `-v`).
 
-
 ## SOLUTION :
 
 ```bash
 docker compose up -d
 ```
 
-Ouvrir http://localhost:8081, modifier `site/index.html`, puis rafraîchir la page.
+Ouvrir http://localhost:8080, modifier `site/index.html`, puis rafraîchir la page.
