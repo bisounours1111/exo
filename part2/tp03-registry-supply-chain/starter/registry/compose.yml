@@ -1,0 +1,6 @@
+# Registre "de dev" monté à la va-vite : à sécuriser (TLS, auth, persistance, suppression autorisée)
+services:
+  registry:
+    image: registry:2
+    ports:
+      - "5000:5000"
