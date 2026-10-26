@@ -1,0 +1,7 @@
+FROM python:3.12
+WORKDIR /app
+COPY . .
+# The company internal PyPI registry requires authentication
+ARG PIP_INDEX_URL=https://user:password@pypi.internal.example.com/simple
+RUN pip install -r requirements-dev.txt
+CMD ["python", "-m", "worker.main"]
