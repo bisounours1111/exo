@@ -1,0 +1,3 @@
+# À placer dans ~/.config/pip/pip.conf sur le poste des devs
+[global]
+index-url = https://svc-ci:Tr3sS3cret@pypi.internal.example.com/simple
