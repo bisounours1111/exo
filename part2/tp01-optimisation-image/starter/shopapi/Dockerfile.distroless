@@ -1,0 +1,51 @@
+# syntax=docker/dockerfile:1.7
+# Bonus B1: distroless variant (no shell, no package manager, no wget).
+# Build: docker build -f Dockerfile.distroless --build-arg APP_VERSION=1.4.2 --build-arg GIT_SHA=$(git rev-parse --short HEAD) -t shopapi:1.4.2-distroless .
+
+# Dependencies are installed on Debian (glibc) like the distroless image, not on alpine (musl).
+ARG BUILD_IMAGE=node:20.20.2-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
+ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs20-debian12:nonroot@sha256:2cd820156cf039c8b54ae2d2a97e424b6729070714de8707a6b79f20d56f6a9a
+
+FROM ${BUILD_IMAGE} AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --no-audit --no-fund
+
+FROM deps AS test
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
+COPY src/ ./src/
+COPY test/ ./test/
+RUN npm run lint \
+ && npm test \
+ && touch /tmp/tests.ok
+
+FROM ${RUNTIME_IMAGE} AS runtime
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3000
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY src/ ./src/
+COPY --from=test /tmp/tests.ok /tmp/tests.ok
+
+ARG APP_VERSION=dev
+ARG GIT_SHA=unknown
+ENV APP_VERSION=${APP_VERSION}
+LABEL org.opencontainers.image.title="shopapi" \
+      org.opencontainers.image.description="Shop SAS product catalog API (distroless)" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.source="https://github.com/bisounours1111/exo" \
+      org.opencontainers.image.vendor="Shop SAS" \
+      org.opencontainers.image.base.name="gcr.io/distroless/nodejs20-debian12:nonroot"
+
+# The :nonroot image already provides user 65532; make it explicit.
+USER 65532:65532
+EXPOSE 3000
+# No shell and no wget: the healthcheck is a tiny HTTP client run by node itself.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --start-interval=1s --retries=3 \
+    CMD ["/nodejs/bin/node", "-e", "require('http').get('http://127.0.0.1:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+# The base image ENTRYPOINT is already /nodejs/bin/node.
+CMD ["src/server.js"]
