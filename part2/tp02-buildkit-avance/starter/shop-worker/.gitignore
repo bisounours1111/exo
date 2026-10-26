@@ -1,0 +1,4 @@
+# PyPI registry credentials: passed to the build with --secret, never committed.
+pip.conf
+*.tar
+__pycache__/

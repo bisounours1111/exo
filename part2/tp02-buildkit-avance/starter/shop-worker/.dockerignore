@@ -1,0 +1,7 @@
+# Allowlist: pip.conf, pip.conf.example and any local file stay out of the build context.
+*
+!requirements.txt
+!requirements-dev.txt
+!worker/
+!tests/
+**/__pycache__
