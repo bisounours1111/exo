@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1.10
+# Bonus B3: uv instead of pip. uv does not read pip.conf: the index URL is passed as a secret
+# exposed as an environment variable (secret mount env=, Dockerfile 1.10+).
+#   export UV_INDEX_URL=https://pypi.org/simple
+#   docker build -f Dockerfile.uv --secret id=uv_index,env=UV_INDEX_URL -t worker:uv .
+
+ARG PYTHON_IMAGE=python:3.12.16-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.9.5@sha256:f459f6f73a8c4ef5d69f4e6fbbdb8af751d6fa40ec34b39a1ab469acd6e289b7
+
+FROM ${UV_IMAGE} AS uv
+
+FROM ${PYTHON_IMAGE} AS base
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/opt/venv/bin:$PATH
+WORKDIR /app
+
+FROM base AS builder
+ARG TARGETARCH
+# The cache mount and /opt/venv live on different filesystems: copy instead of hard links.
+ENV UV_LINK_MODE=copy
+COPY --from=uv /uv /usr/local/bin/uv
+COPY requirements.txt ./
+RUN --mount=type=secret,id=uv_index,env=UV_INDEX_URL,required=true \
+    --mount=type=cache,target=/root/.cache/uv,id=uv-${TARGETARCH},sharing=locked \
+    uv venv /opt/venv \
+ && uv pip install --python /opt/venv/bin/python -r requirements.txt
+
+FROM builder AS test
+ARG TARGETARCH
+COPY requirements-dev.txt ./
+RUN --mount=type=secret,id=uv_index,env=UV_INDEX_URL,required=true \
+    --mount=type=cache,target=/root/.cache/uv,id=uv-${TARGETARCH},sharing=locked \
+    uv pip install --python /opt/venv/bin/python -r requirements-dev.txt
+COPY worker/ ./worker/
+COPY tests/ ./tests/
+RUN ruff check worker tests \
+ && python -m pytest -q \
+ && touch /tmp/tests.ok
+
+FROM base AS runtime
+RUN groupadd --system --gid 10001 worker \
+ && useradd --system --uid 10001 --gid worker --no-create-home --shell /usr/sbin/nologin worker
+# uv stays in the builder stage: only the virtualenv reaches the final image.
+COPY --from=builder /opt/venv /opt/venv
+COPY worker/ ./worker/
+COPY --from=test /tmp/tests.ok /tmp/tests.ok
+USER 10001:10001
+EXPOSE 9100
+CMD ["python", "-m", "worker.main"]

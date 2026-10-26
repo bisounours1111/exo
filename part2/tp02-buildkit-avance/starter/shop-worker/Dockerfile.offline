@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1.7
+# Bonus B1: build without Internet access thanks to a pre-filled cache mount.
+#   1. online, once: docker buildx build -f Dockerfile.offline --secret id=pipconf,src=pip.conf --target prefetch .
+#   2. offline:      docker buildx build -f Dockerfile.offline --network=none -t worker:offline --load .
+
+ARG PYTHON_IMAGE=python:3.12.16-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
+
+FROM ${PYTHON_IMAGE} AS base
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH=/opt/venv/bin:$PATH
+WORKDIR /app
+
+# ---- prefetch: the only stage using the network, downloads wheels into the cache mount ----
+FROM base AS prefetch
+ARG TARGETARCH
+COPY requirements.txt requirements-dev.txt ./
+RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf,required=true \
+    --mount=type=cache,target=/wheels,id=wheels-${TARGETARCH},sharing=locked \
+    pip download --dest /wheels -r requirements-dev.txt
+
+# ---- builder / test / runtime: no network access, install from /wheels only ----
+FROM base AS builder
+ARG TARGETARCH
+COPY requirements.txt ./
+RUN --network=none \
+    --mount=type=cache,target=/wheels,id=wheels-${TARGETARCH},sharing=locked \
+    python -m venv /opt/venv \
+ && pip install --no-cache-dir --no-index --find-links /wheels -r requirements.txt
+
+FROM builder AS test
+ARG TARGETARCH
+COPY requirements-dev.txt ./
+RUN --network=none \
+    --mount=type=cache,target=/wheels,id=wheels-${TARGETARCH},sharing=locked \
+    pip install --no-cache-dir --no-index --find-links /wheels -r requirements-dev.txt
+COPY worker/ ./worker/
+COPY tests/ ./tests/
+RUN --network=none ruff check worker tests \
+ && python -m pytest -q \
+ && touch /tmp/tests.ok
+
+FROM base AS runtime
+RUN --network=none groupadd --system --gid 10001 worker \
+ && useradd --system --uid 10001 --gid worker --no-create-home --shell /usr/sbin/nologin worker
+COPY --from=builder /opt/venv /opt/venv
+COPY worker/ ./worker/
+COPY --from=test /tmp/tests.ok /tmp/tests.ok
+USER 10001:10001
+EXPOSE 9100
+CMD ["python", "-m", "worker.main"]
