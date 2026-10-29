@@ -1,0 +1,38 @@
+# Bonus B1: shared Trivy server. The vulnerability DB is downloaded once and kept up to date by the
+# server; clients (developers, CI runners) only send the list of packages to analyse.
+#   TRIVY_TOKEN=<token> docker compose up -d
+#   trivy image --server http://127.0.0.1:4954 --token <token> shopapi:1.4.2
+name: shop-scanner
+
+x-trivy-image: &trivy-image aquasec/trivy:0.67.2@sha256:e2b22eac59c02003d8749f5b8d9bd073b62e30fefaef5b7c8371204e0a4b0c08
+
+services:
+  # One-shot: fills the shared cache before the server starts.
+  db-init:
+    image: *trivy-image
+    command: ["image", "--download-db-only", "--cache-dir", "/cache"]
+    volumes:
+      - trivy-cache:/cache
+
+  trivy:
+    image: *trivy-image
+    restart: unless-stopped
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    command: ["server", "--listen", "0.0.0.0:4954", "--cache-dir", "/cache"]
+    environment:
+      # Clients must send this token in the Trivy-Token header.
+      TRIVY_TOKEN: ${TRIVY_TOKEN:?set TRIVY_TOKEN}
+    ports:
+      - "127.0.0.1:4954:4954"
+    volumes:
+      - trivy-cache:/cache
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4954/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  trivy-cache:
