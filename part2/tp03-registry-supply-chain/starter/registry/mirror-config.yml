@@ -1,0 +1,28 @@
+# Docker Hub pull-through cache: the first pull fetches from Docker Hub, the next ones are served locally.
+version: 0.1
+log:
+  level: info
+  fields:
+    service: mirror
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  delete:
+    enabled: true
+  cache:
+    blobdescriptor: inmemory
+http:
+  addr: :5000
+  debug:
+    addr: :5001
+proxy:
+  remoteurl: https://registry-1.docker.io
+  # An authenticated Docker Hub account raises the pull rate limit:
+  # username: shop-mirror
+  # password: <access token>
+  ttl: 168h
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3

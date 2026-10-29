@@ -1,6 +1,74 @@
-# Registre "de dev" monté à la va-vite : à sécuriser (TLS, auth, persistance, suppression autorisée)
+# Shop SAS private registry: TLS + authentication (nginx), persistence, delete enabled, UI, Docker Hub mirror.
+# Prerequisite: ./init.sh (CA, certificate, htpasswd). Start: docker compose up -d
+name: shop-registry
+
 services:
   registry:
-    image: registry:2
+    # distribution v3: garbage-collect --delete-untagged keeps the children of OCI indexes (2.8 deletes them).
+    image: registry:3.1.2@sha256:d4032d4cc323c1731c707931ecada07a53076eac38e3b61ae57533f170f2c6c3
+    restart: unless-stopped
+    volumes:
+      - registry-data:/var/lib/registry
+      - ./config.yml:/etc/distribution/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/debug/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    # Not published: only reachable through the gateway.
+    expose:
+      - "5000"
+
+  gateway:
+    image: nginx:1.27.5-bookworm@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d
+    restart: unless-stopped
+    depends_on:
+      registry:
+        condition: service_healthy
     ports:
       - "5000:5000"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs/registry.crt:/etc/nginx/certs/registry.crt:ro
+      - ./certs/registry.key:/etc/nginx/certs/registry.key:ro
+      - ./auth/htpasswd:/etc/nginx/auth/htpasswd:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--cacert", "/etc/nginx/certs/registry.crt", "--resolve", "gateway:5000:127.0.0.1", "https://gateway:5000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  ui:
+    image: joxit/docker-registry-ui:2.5.7@sha256:5594b76bf8dd9de479648e28f38572d020d260568be40b7e52b9758b442275e1
+    restart: unless-stopped
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:80"
+    environment:
+      REGISTRY_TITLE: Shop SAS registry
+      SINGLE_REGISTRY: "true"
+      # The UI proxies to the gateway: the browser asks for the registry credentials.
+      NGINX_PROXY_PASS_URL: https://gateway:5000
+      DELETE_IMAGES: "true"
+      SHOW_CONTENT_DIGEST: "true"
+      SHOW_CATALOG_NB_TAGS: "true"
+
+  mirror:
+    image: registry:3.1.2@sha256:d4032d4cc323c1731c707931ecada07a53076eac38e3b61ae57533f170f2c6c3
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    volumes:
+      - mirror-data:/var/lib/registry
+      - ./mirror-config.yml:/etc/distribution/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/debug/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  registry-data:
+  mirror-data:
