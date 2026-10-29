@@ -32,6 +32,11 @@ RUN npm run lint \
 FROM base AS runtime
 ENV NODE_ENV=production \
     PORT=3000
+# npm, npx, corepack and yarn are not used at runtime and bring most of the base image CVEs.
+# OpenSSL is upgraded to the patched Alpine release (TP03 release gate: no fixable HIGH/CRITICAL CVE).
+RUN rm -rf /usr/local/lib/node_modules /opt/yarn-* \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+ && apk add --no-cache libssl3=3.5.9-r0 libcrypto3=3.5.9-r0
 # Files are owned by root and cannot be modified by the node user.
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./

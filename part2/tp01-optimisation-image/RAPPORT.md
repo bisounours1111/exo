@@ -139,6 +139,9 @@ Si l'application n'avait pas de handler, il faudrait un init minimal (`docker ru
   n'invalide ni `npm ci` ni `COPY src/`.
 - **`HEALTHCHECK ... --start-interval=1s`** : sonde rapide pendant la phase de démarrage, puis toutes les
   10 s. Cette option demande Docker Engine ≥ 25 et hadolint ≥ 2.13.
+- **Runtime sans gestionnaire de paquets** : npm, npx, corepack et yarn sont retirés de l'étape `runtime`,
+  et OpenSSL est mis à jour en `3.5.9-r0`. Trivy ne relève aucune vulnérabilité HIGH/CRITICAL
+  corrigeable.
 
 ## Bonus
 
