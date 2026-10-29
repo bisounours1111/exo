@@ -1,0 +1,14 @@
+# Stack d'observabilité à compléter, à lancer À CÔTÉ de la stack du TP04 (projet "shop").
+# Elle doit rejoindre les réseaux existants shop_front / shop_back pour scraper l'API et le worker.
+name: observability
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    # TODO : config, volume, réseau, port
+  grafana:
+    image: grafana/grafana:11.2.0
+    # TODO : datasources provisionnées, dashboard, port 3001
+  # TODO : cadvisor (métriques conteneurs), loki + promtail (logs)
+networks:
+  shop_front: { external: true }
+  shop_back:  { external: true }

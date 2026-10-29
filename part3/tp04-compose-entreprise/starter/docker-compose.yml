@@ -1,0 +1,33 @@
+# Compose "qui marche sur le poste du dev" : à industrialiser.
+version: '3'
+services:
+  db:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+  api:
+    build: ./apps/shopapi
+    ports:
+      - "3000:3000"
+    links:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+      REDIS_URL: redis://redis:6379
+    command: sh -c "sleep 10 && node src/server.js"
+  worker:
+    build: ./apps/shop-worker
+    links:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+      REDIS_URL: redis://redis:6379
+    restart: always

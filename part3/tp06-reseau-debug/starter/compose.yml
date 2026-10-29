@@ -1,0 +1,60 @@
+# INCIDENT P1 — "La préprod ne répond plus depuis la mise à jour du compose de ce matin."
+# Le dev qui l'a modifié est en congé. Vous avez 1h30. Ne modifiez pas le code applicatif.
+name: incident
+services:
+  front:
+    image: nginx:1.27-alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - public
+    depends_on:
+      - api
+
+  api:
+    build: ../../tp04-compose-entreprise/solution/apps/shopapi
+    container_name: api
+    command: node server.js
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://shop:shop@databse:5432/shop
+      REDIS_URL: redis://redis:6379
+    networks:
+      - public
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+
+  db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+      POSTGRES_DB: shop
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../../tp04-compose-entreprise/solution/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--requirepass", "r3dis"]
+    network_mode: host
+
+networks:
+  public:
+    internal: true
+  backend:
+
+volumes:
+  pgdata:

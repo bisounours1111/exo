@@ -1,0 +1,18 @@
+# Base de données "legacy" en PostgreSQL 14, à migrer vers 16 sans perte de données.
+name: shopdata
+services:
+  db:
+    image: postgres:14.13-alpine
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+      POSTGRES_DB: shop
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports: ["5433:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop"]
+      interval: 5s
+      retries: 10
+volumes:
+  pgdata:
