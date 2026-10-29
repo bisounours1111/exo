@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# release-gate.sh IMAGE
-# Objectif : refuser la publication d'une image qui ne respecte pas la politique Shop SAS.
-# À compléter : SBOM, scan, signature, labels obligatoires, utilisateur non-root.
-set -euo pipefail
-IMAGE="${1:?usage: release-gate.sh IMAGE}"
-echo "TODO: vérifier $IMAGE"
-exit 1
+# release-gate.sh IMAGE [--push REGISTRY_IMAGE]
+# The release gate lives next to tools.sh, one level up.
+exec "$(dirname "$0")/../release-gate.sh" "$@"

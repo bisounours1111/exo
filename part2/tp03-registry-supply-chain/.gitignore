@@ -1,0 +1,4 @@
+# cosign private key and generated reports stay local.
+cosign.key
+sbom.json
+release/
