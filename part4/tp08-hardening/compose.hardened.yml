@@ -1,0 +1,94 @@
+# Hardening overlay for the TP04 stack. From part3/tp04-compose-entreprise/solution:
+#   docker compose -f compose.yml -f ../../../part4/tp08-hardening/compose.hardened.yml up -d --wait
+
+x-hardened: &hardened
+  # Read-only rootfs: a compromised process cannot drop a binary, a web shell or a modified config.
+  read_only: true
+  # Writable scratch space in memory only, lost at restart.
+  tmpfs:
+    - /tmp
+  # No Linux capability: no chown, raw sockets, mount, ptrace... even for a root process.
+  cap_drop: [ALL]
+  security_opt:
+    # A setuid binary (su, passwd...) cannot raise the privileges of the process.
+    - no-new-privileges:true
+
+services:
+  # Read-only Docker API for Traefik: only GET on containers, events, version and ping.
+  # Traefik no longer holds the socket, which is root access to the host.
+  socket-proxy:
+    <<: *hardened
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    # The entrypoint renders haproxy.cfg next to its template at startup.
+    read_only: false
+    environment:
+      CONTAINERS: "1"
+      POST: "0"
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [socket]
+    deploy:
+      resources:
+        # pids: fork bomb protection.
+        limits: { cpus: "0.25", memory: 64M, pids: 50 }
+
+  traefik:
+    <<: *hardened
+    # Unprivileged user: binding port 80 works because Docker sets ip_unprivileged_port_start=0.
+    user: "65534:65534"
+    environment:
+      TRAEFIK_PROVIDERS_DOCKER_ENDPOINT: tcp://socket-proxy:2375
+    volumes: !reset []
+    networks: [front, socket]
+    depends_on:
+      socket-proxy:
+        condition: service_started
+    deploy:
+      resources:
+        # pids: fork bomb protection.
+        limits: { cpus: "0.50", memory: 128M, pids: 100 }
+
+  api:
+    <<: *hardened
+    deploy:
+      resources:
+        # pids: fork bomb protection.
+        limits: { cpus: "0.50", memory: 256M, pids: 100 }
+
+  worker:
+    <<: *hardened
+    deploy:
+      resources:
+        # pids: fork bomb protection.
+        limits: { cpus: "0.50", memory: 128M, pids: 50 }
+
+  db:
+    <<: *hardened
+    # Started directly as postgres (uid 70): the entrypoint no longer needs CHOWN, FOWNER,
+    # DAC_OVERRIDE, SETUID and SETGID to fix ownership and drop root.
+    user: "70:70"
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql:uid=70,gid=70
+    deploy:
+      resources:
+        # pids: fork bomb protection.
+        limits: { cpus: "1.0", memory: 512M, pids: 100 }
+
+  redis:
+    <<: *hardened
+    # redis user of the official image (uid 999, gid 1000).
+    user: "999:1000"
+    deploy:
+      resources:
+        # pids: fork bomb protection.
+        limits: { cpus: "0.50", memory: 128M, pids: 50 }
+
+networks:
+  # Only Traefik can reach the socket proxy, and the proxy has no other network.
+  socket:
+    internal: true
