@@ -1,0 +1,37 @@
+# Dev only, applied automatically by `docker compose up`.
+services:
+  traefik:
+    environment:
+      TRAEFIK_API_INSECURE: "true"
+      TRAEFIK_API_DASHBOARD: "true"
+    ports:
+      - "8080:8080"
+
+  api:
+    # Source code mounted from the host, restarted on every change.
+    command: ["node", "--watch", "src/server.js"]
+    volumes:
+      - ./apps/shopapi/src:/app/src:ro
+    # Docker Desktop on Windows does not forward file events to bind mounts:
+    # `docker compose watch` (make watch) restarts the API from the host side instead.
+    develop:
+      watch:
+        - action: restart
+          path: ./apps/shopapi/src
+    environment:
+      LOG_LEVEL: debug
+    ports:
+      - "${API_PORT:-3000}:3000"
+
+  worker:
+    environment:
+      LOG_LEVEL: DEBUG
+
+  db:
+    # back is internal: the dev network is only used to publish the debug port.
+    networks: [back, dev]
+    ports:
+      - "5432:5432"
+
+networks:
+  dev: {}

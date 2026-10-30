@@ -1,0 +1,7 @@
+# Allowlist: everything is excluded except what the build needs.
+# A new sensitive file (.env, dump, key) can never slip into the build context.
+*
+!package.json
+!package-lock.json
+!src/
+!test/

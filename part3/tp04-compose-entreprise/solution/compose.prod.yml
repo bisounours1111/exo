@@ -1,0 +1,47 @@
+# Prod: docker compose -f compose.yml -f compose.prod.yml up -d --wait
+# Images come from the TP03 registry (REGISTRY and VERSION in .env).
+x-hardening: &hardening
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  traefik:
+    <<: *hardening
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 128M }
+
+  api:
+    <<: *hardening
+    build: !reset null
+    image: ${REGISTRY:?REGISTRY must be set}/shopapi:${VERSION:?VERSION must be set}
+    deploy:
+      replicas: 2
+      resources:
+        limits: { cpus: "0.50", memory: 256M }
+
+  worker:
+    <<: *hardening
+    build: !reset null
+    image: ${REGISTRY:?REGISTRY must be set}/shop-worker:${VERSION:?VERSION must be set}
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 128M }
+
+  db:
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+
+  redis:
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 128M }
