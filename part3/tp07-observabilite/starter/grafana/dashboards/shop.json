@@ -1,0 +1,69 @@
+{
+  "uid": "shop-overview",
+  "title": "Shop SAS - overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "API requests/s by status",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (status) (rate(http_request_duration_seconds_count{job=\"api\"}[1m]))", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "API latency p50 / p95",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"api\"}[1m])))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"api\"}[1m])))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 3, "type": "stat", "title": "API 5xx ratio",
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.05 } ] } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(http_request_duration_seconds_count{job=\"api\",status=~\"5..\"}[1m])) / sum(rate(http_request_duration_seconds_count{job=\"api\"}[1m])) or vector(0)" }
+      ]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Targets up",
+      "gridPos": { "x": 6, "y": 8, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum by (job) (up)", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Worker orders/s by status",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum by (status) (rate(orders_processed_total[1m]))", "legendFormat": "{{status}}" } ]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Container CPU (cores)",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "label_replace(sum by (image, name) (rate(container_cpu_usage_seconds_total{image=~\".*(shopapi|shop-api|shop-worker|postgres:16|redis:7|traefik).*\"}[1m])), \"cid\", \"$1\", \"name\", \"(.{12}).*\")", "legendFormat": "{{image}} {{cid}}" } ]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Container memory (working set)",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [ { "refId": "A", "expr": "label_replace(sum by (image, name) (container_memory_working_set_bytes{image=~\".*(shopapi|shop-api|shop-worker|postgres:16|redis:7|traefik).*\"}), \"cid\", \"$1\", \"name\", \"(.{12}).*\")", "legendFormat": "{{image}} {{cid}}" } ]
+    },
+    {
+      "id": 8, "type": "logs", "title": "Shop logs",
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [ { "refId": "A", "expr": "{project=\"shop\"}" } ]
+    }
+  ]
+}

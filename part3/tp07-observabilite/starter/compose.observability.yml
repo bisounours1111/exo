@@ -4,11 +4,73 @@ name: observability
 services:
   prometheus:
     image: prom/prometheus:v2.54.1
-    # TODO : config, volume, réseau, port
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [default, shop_front, shop_back]
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:11.2.0
-    # TODO : datasources provisionnées, dashboard, port 3001
-  # TODO : cadvisor (métriques conteneurs), loki + promtail (logs)
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on: [prometheus, loki]
+    restart: unless-stopped
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.53.0
+    privileged: true
+    # cgroup v2: the host cgroup namespace is needed to see the other containers.
+    cgroup: host
+    # With the containerd image store, the Docker factory cannot find the container layers:
+    # containers are read from containerd (namespace moby) instead.
+    command:
+      - --docker=unix:///nonexistent.sock
+      - --containerd=/var/run/containerd/containerd.sock
+      - --containerd-namespace=moby
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.1.1
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - loki-data:/loki
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: [loki]
+    restart: unless-stopped
+
 networks:
   shop_front: { external: true }
   shop_back:  { external: true }
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:
