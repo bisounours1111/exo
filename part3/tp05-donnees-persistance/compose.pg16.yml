@@ -1,0 +1,10 @@
+# PostgreSQL 16 on a new volume, used by upgrade-pg.sh on top of starter/compose.yml.
+# The PostgreSQL 14 volume (pgdata) is left untouched for the rollback.
+services:
+  db:
+    image: postgres:16.4-alpine
+    volumes: !override
+      - pgdata16:/var/lib/postgresql/data
+
+volumes:
+  pgdata16:
