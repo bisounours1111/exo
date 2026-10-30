@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  qty INT NOT NULL DEFAULT 0,
+  photo VARCHAR(100) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO items(name, qty) VALUES ('Visserie M4', 500), ('Câble HDMI 2m', 3), ('Dock USB-C', 12), ('Batterie externe', 2);
